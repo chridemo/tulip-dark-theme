@@ -1,2 +1,0 @@
-nohup ./vulnbox_capture_sync.sh > ~/sync.log 2>&1 &
-nohup ./tulip_server_setup.sh > ~/tulip_setup.log 2>&1 &
