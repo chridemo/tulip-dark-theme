@@ -1,0 +1,17 @@
+.list_container {
+
+    @apply flex flex-col;
+
+    a {
+        @apply pb-1;
+    }
+
+    li {
+        @apply bg-neutral-800 text-neutral-100 p-2 focus:ring-4 focus:ring-cyan-600 border-t border-neutral-900 list-none hover:bg-neutral-700;
+    }
+
+    li.active {
+        @apply border-y border-l-4 border-cyan-500 bg-neutral-700
+    }
+
+}

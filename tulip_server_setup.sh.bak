@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# tulip_pcap_receiver.sh
+# -------------------------------------------------------------
+# Da eseguire SUL SERVER TULIP.
+# Ascolta sulla porta 4242 e salva ogni connessione TCP in arrivo
+# come file pcap separato dentro traffic_incoming/. Nessuna
+# autenticazione: chiunque raggiunga questa porta sulla rete può
+# scrivere pcap — va bene su una rete di gara isolata, NON esporlo
+# su internet pubblico.
+# -------------------------------------------------------------
+
+PORT=4242
+DEST_DIR="$HOME/tulip/services/pcap"
+
+mkdir -p "$DEST_DIR"
+
+echo "[*] In ascolto su porta $PORT, salvo i pcap in $DEST_DIR"
+echo "[*] Ctrl+C per fermare."
+
+cleanup() {
+    echo ""
+    echo "[*] Fermo il receiver."
+    exit 0
+}
+trap cleanup INT TERM
+
+while true; do
+    OUTFILE="$DEST_DIR/capture_$(date +%Y%m%d_%H%M%S_%N).pcap"
+    nc -l -p "$PORT" > "$OUTFILE" 2>/dev/null
+    SIZE=$(stat -c%s "$OUTFILE" 2>/dev/null || echo 0)
+    if [ "$SIZE" -gt 0 ]; then
+        echo "[+] $(date '+%H:%M:%S') — ricevuto $OUTFILE ($SIZE byte)"
+    else
+        rm -f "$OUTFILE"
+    fi
+done

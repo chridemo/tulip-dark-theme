@@ -1,0 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Recursive:wght,MONO@300..800,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  @apply bg-neutral-900 text-neutral-100;
+}
