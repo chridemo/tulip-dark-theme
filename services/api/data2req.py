@@ -53,7 +53,6 @@ user = list(rounds.values())[-1]
 #flight_id = user["flight_id"]
 
 {% if use_requests_session %}
-headers = {"User-Agent":"checker"}
 res = requests.get(URL, headers=headers)
 {% endif -%}
 """
