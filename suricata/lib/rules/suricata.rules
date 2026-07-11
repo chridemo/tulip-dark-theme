@@ -1,0 +1,70 @@
+
+#### XSS (sid 200-209) ######################################################
+alert tcp any any -> any any (msg:"XSS - script tag"; flow:to_server; content:"<script"; nocase; metadata: tag xss; sid:200; rev:1;)
+alert tcp any any -> any any (msg:"XSS - inline event handler"; flow:to_server; pcre:"/on(error|load|mouseover|focus|click|input)\s*=/i"; metadata: tag xss; sid:201; rev:1;)
+alert tcp any any -> any any (msg:"XSS - javascript: URI"; flow:to_server; content:"javascript:"; nocase; metadata: tag xss; sid:202; rev:1;)
+alert tcp any any -> any any (msg:"XSS - svg onload vector"; flow:to_server; content:"<svg"; nocase; content:"onload"; nocase; distance:0; metadata: tag xss; sid:203; rev:1;)
+alert tcp any any -> any any (msg:"XSS - URL-encoded script tag"; flow:to_server; content:"%3Cscript"; nocase; metadata: tag xss; sid:204; rev:1;)
+
+#### SQLi (sid 210-219) ######################################################
+alert tcp any any -> any any (msg:"SQLi - UNION SELECT"; flow:to_server; content:"UNION"; nocase; content:"SELECT"; nocase; distance:0; metadata: tag sqli; sid:210; rev:1;)
+alert tcp any any -> any any (msg:"SQLi - boolean tautology"; flow:to_server; pcre:"/(\bOR\b|\bAND\b)\s+[\w'\"]+\s*=\s*[\w'\"]+/i"; metadata: tag sqli; sid:211; rev:1;)
+alert tcp any any -> any any (msg:"SQLi - comment sequence"; flow:to_server; pcre:"/(--\s|#|\/\*)/"; metadata: tag sqli_comment; sid:212; rev:1;)
+alert tcp any any -> any any (msg:"SQLi - time-based blind"; flow:to_server; pcre:"/(sleep\s*\(|benchmark\s*\(|pg_sleep\s*\(|waitfor\s+delay)/i"; metadata: tag sqli_blind; sid:213; rev:1;)
+alert tcp any any -> any any (msg:"SQLi - information_schema probing"; flow:to_server; content:"information_schema"; nocase; metadata: tag sqli; sid:214; rev:1;)
+alert tcp any any -> any any (msg:"SQLi - stacked query"; flow:to_server; pcre:"/;\s*(drop|insert|update|delete)\s/i"; metadata: tag sqli_stacked; sid:215; rev:1;)
+
+#### SSRF (sid 220-229) ######################################################
+alert tcp any any -> any any (msg:"SSRF - cloud metadata endpoint"; flow:to_server; content:"169.254.169.254"; metadata: tag ssrf; sid:220; rev:1;)
+alert tcp any any -> any any (msg:"SSRF - loopback reference"; flow:to_server; pcre:"/(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])/i"; metadata: tag ssrf; sid:221; rev:1;)
+alert tcp any any -> any any (msg:"SSRF - RFC1918 internal target"; flow:to_server; pcre:"/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})/"; metadata: tag ssrf; sid:222; rev:1;)
+alert tcp any any -> any any (msg:"SSRF - non-http scheme (gopher/dict/file/ftp)"; flow:to_server; pcre:"/(gopher|dict|file|ftp):\/\//i"; metadata: tag ssrf_scheme; sid:223; rev:1;)
+alert tcp any any -> any any (msg:"SSRF - redirect/callback param pointed at a URL"; flow:to_server; pcre:"/(url|uri|target|dest|redirect|callback|fetch)=https?%3A/i"; metadata: tag ssrf; sid:224; rev:1;)
+
+#### LFI (sid 230-239) #######################################################
+alert tcp any any -> any any (msg:"LFI - path traversal"; flow:to_server; content:"../"; metadata: tag lfi; sid:230; rev:1;)
+alert tcp any any -> any any (msg:"LFI - URL-encoded traversal"; flow:to_server; content:"%2e%2e%2f"; nocase; metadata: tag lfi; sid:231; rev:1;)
+alert tcp any any -> any any (msg:"LFI - sensitive file target"; flow:to_server; pcre:"/(\/etc\/passwd|\/etc\/shadow|win\.ini|boot\.ini)/i"; metadata: tag lfi; sid:232; rev:1;)
+alert tcp any any -> any any (msg:"LFI - PHP stream wrapper abuse"; flow:to_server; content:"php://"; nocase; metadata: tag lfi_wrapper; sid:233; rev:1;)
+alert tcp any any -> any any (msg:"LFI - null byte truncation"; flow:to_server; content:"%00"; metadata: tag lfi_nullbyte; sid:234; rev:1;)
+
+#### Byte / protocol injection (sid 240-249) #################################
+alert tcp any any -> any any (msg:"Byte injection - embedded NUL byte"; flow:to_server; content:"|00|"; metadata: tag byte_injection; sid:240; rev:1;)
+alert tcp any any -> any any (msg:"Byte injection - CRLF / header injection"; flow:to_server; content:"|0d 0a|"; metadata: tag crlf_injection; sid:241; rev:1;)
+alert tcp any any -> any any (msg:"Byte injection - non-printable control chars in body"; flow:to_server; pcre:"/[\x01-\x08\x0b\x0c\x0e-\x1f]/"; metadata: tag byte_injection; sid:242; rev:1;)
+# Note: dsize applies to the whole packet, so treat this as a coarse "unusually large single packet" trip-wire, not a per-field size check.
+alert tcp any any -> any any (msg:"Byte injection - oversized single packet"; flow:to_server; dsize:>4000; metadata: tag oversized_packet; sid:243; rev:1;)
+
+#### Prompt injection — for LLM-backed services (sid 250-259) ################
+alert tcp any any -> any any (msg:"Prompt injection - ignore previous instructions"; flow:to_server; pcre:"/ignore\s+(all|any|the)?\s?(previous|prior|above)\s+instructions/i"; metadata: tag prompt_injection; sid:250; rev:1;)
+alert tcp any any -> any any (msg:"Prompt injection - role override attempt"; flow:to_server; pcre:"/(you are now|act as|pretend (to be|you're)|new instructions\s*:)/i"; metadata: tag prompt_injection; sid:251; rev:1;)
+alert tcp any any -> any any (msg:"Prompt injection - system prompt exfiltration attempt"; flow:to_server; pcre:"/(reveal|print|show|repeat|output)\s+(your|the)\s+(system prompt|instructions)/i"; metadata: tag prompt_injection; sid:252; rev:1;)
+alert tcp any any -> any any (msg:"Prompt injection - fenced payload / delimiter breakout"; flow:to_server; content:"```"; metadata: tag prompt_injection; sid:253; rev:1;)
+alert tcp any any -> any any (msg:"Prompt injection - jailbreak keyword"; flow:to_server; pcre:"/\bDAN\b|do anything now|jailbreak/i"; metadata: tag prompt_injection; sid:254; rev:1;)
+
+#### XXE (sid 260-269) #######################################################
+alert tcp any any -> any any (msg:"XXE - DOCTYPE with ENTITY declaration"; flow:to_server; content:"<!DOCTYPE"; nocase; content:"ENTITY"; nocase; distance:0; metadata: tag xxe; sid:260; rev:1;)
+alert tcp any any -> any any (msg:"XXE - external entity via SYSTEM"; flow:to_server; pcre:"/SYSTEM\s+[\"'](file|http|ftp):/i"; metadata: tag xxe; sid:261; rev:1;)
+
+#### SSTI - Server-Side Template Injection (sid 270-279) #####################
+alert tcp any any -> any any (msg:"SSTI - template expression syntax"; flow:to_server; pcre:"/(\{\{.*\}\}|\$\{.*\}|<%=.*%>)/"; metadata: tag ssti; sid:270; rev:1;)
+
+#### Insecure deserialization (sid 280-289) ###################################
+alert tcp any any -> any any (msg:"Deserialization - Java serialized object magic bytes"; flow:to_server; content:"|ac ed 00 05|"; metadata: tag deserialization; sid:280; rev:1;)
+alert tcp any any -> any any (msg:"Deserialization - PHP serialized object"; flow:to_server; pcre:"/O:\d+:\"[A-Za-z0-9_\\\\]+\":\d+:\{/"; metadata: tag deserialization; sid:281; rev:1;)
+alert tcp any any -> any any (msg:"Deserialization - Log4Shell JNDI lookup"; flow:to_server; content:"${jndi:"; nocase; metadata: tag log4shell; sid:282; rev:1;)
+
+#### NoSQL injection (sid 290-294) ############################################
+alert tcp any any -> any any (msg:"NoSQLi - Mongo operator injection"; flow:to_server; pcre:"/\"\$(where|ne|gt|lt|regex|exists)\"\s*:/i"; metadata: tag nosqli; sid:290; rev:1;)
+
+#### Command injection (sid 295-299) ##########################################
+alert tcp any any -> any any (msg:"Command injection - shell metacharacter chaining"; flow:to_server; pcre:"/[;&|`]\s*(cat|ls|whoami|id|nc|bash|sh|curl|wget|python)\b/i"; metadata: tag cmdi; sid:295; rev:1;)
+alert tcp any any -> any any (msg:"Command injection - subshell substitution"; flow:to_server; content:"$("; metadata: tag cmdi; sid:296; rev:1;)
+
+#### Open redirect (sid 300+) #################################################
+alert tcp any any -> any any (msg:"Open redirect - external redirect param"; flow:to_server; pcre:"/(redirect|return|next|url)=https?%3A%2F%2F/i"; metadata: tag open_redirect; sid:300; rev:1;)
+
+
+alert tcp any any -> any any (msg: "404 Not Found"; http.stat_code; content:"404"; metadata: tag notfound; sid:4; rev: 1;)
+alert tcp any any -> any any (msg: "Path Traversal-../"; flow:to_server; content: "../"; metadata: tag path_traversal; sid:1; rev: 1;)
+alert tcp any any -> any any (msg: "Path Traversal-..%2F"; flow:to_server; content: "..%2F"; metadata: tag path_traversal; sid:2 rev: 1;)
