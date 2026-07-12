@@ -1,5 +1,5 @@
 #!/bin/bash
-PCAP_DIR="/root/tulip/traffic"
+PCAP_DIR="/root/tulip-dark-mode/traffic"
 PORT=4242
 
 mkdir -p "$PCAP_DIR"
